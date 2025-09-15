@@ -1,4 +1,4 @@
-# Создаём ключ EC2 из статичного public_key
+# ====== SSH ключи ======
 resource "aws_key_pair" "deployer" {
   key_name   = "deployer-key"
   public_key = var.public_key
@@ -9,61 +9,31 @@ resource "aws_key_pair" "this" {
   public_key = var.ec2_ssh_public_key
 }
 
-# EC2 инстанс
+# ====== EC2 инстанс ======
 resource "aws_instance" "app_server" {
-  ami                         = var.ami
-  instance_type               = var.instance_type
-  subnet_id                   = var.subnet_id
-  vpc_security_group_ids      = var.security_group_ids
-  key_name 		      = aws_key_pair.this.key_name
-  associate_public_ip_address = true
+  ami                    = var.ami
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  vpc_security_group_ids = var.security_group_ids
+  key_name               = aws_key_pair.this.key_name
 
-  provisioner "file" {
-    source      = "${path.module}/../../app/index.php"
-    destination = "/tmp/index.php"
-    connection {
-      type        = "ssh"
-      user        = "ec2-user"
-      private_key = var.ec2_private_key
-      host        = self.public_ip
-    }
-  }
-
-
-
-  provisioner "file" {
-    source      = "${path.module}/../../app/default.conf"
-    destination = "/tmp/default.conf"
-    connection {
-      type        = "ssh"
-      user        = "ec2-user"
-      private_key = var.ec2_private_key
-      host        = self.public_ip
-    }
-  }
-
-  provisioner "file" {
-    source      = "${path.module}/../../app/logstash.conf"
-    destination = "/tmp/logstash.conf"
-    connection {
-      type        = "ssh"
-      user        = "ec2-user"
-      private_key = var.ec2_private_key
-      host        = self.public_ip
-    }
-  }
-  user_data = data.template_file.init_ec2.rendered
-#  user_data = filebase64("${path.module}/../../user_data/init_ec2.sh")
+  # Используем Elastic IP для maildomain
+  user_data = templatefile("${path.module}/../../user_data/init_ec2.sh", {
+    maildomain = aws_eip.app_server_eip.public_ip
+  })
 
   tags = {
     Name = "PHP-Nginx-ELK-Grafana"
   }
 }
 
-data "template_file" "init_ec2" {
-  template = file("${path.module}/../../user_data/init_ec2.sh")
+# ====== Elastic IP ======
+resource "aws_eip" "app_server_eip" {
+  vpc = true
+}
 
-  vars = {
-    maildomain = aws_instance.app_server.public_dns
-  }
+# ====== Привязка EIP к инстансу ======
+resource "aws_eip_association" "app_server_assoc" {
+  instance_id   = aws_instance.app_server.id
+  allocation_id = aws_eip.app_server_eip.id
 }
