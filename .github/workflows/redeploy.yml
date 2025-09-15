@@ -10,8 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Передача только чувствительных переменных через GitHub Secrets
+      TF_VAR_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
       TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
-      TF_VAR_ec2_private_key: ${{ secrets.EC2_PRIVATE_KEY }}
+      TF_VAR_ec2_private_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
       AWS_REGION: eu-north-1
 
     steps:
