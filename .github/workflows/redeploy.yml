@@ -1,4 +1,4 @@
-name: Redeploy AWS Infra from Scratch
+name: Redeploy AWS
 
 on:
   push:
@@ -8,45 +8,46 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    env:
+      # keys for all jobs
+      TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
+      TF_VAR_ec2_private_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
     steps:
-      # 1. Клонируем репозиторий
+      # clone
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Устанавливаем Terraform
+      # setup 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
 
-      # 3. Настраиваем AWS credentials
-      - name: Configure AWS credentials
+      # 3. build credentions
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1  # поменяй на свой регион
+          aws-region: eu-north-1
 
-      # 4. Локальная инициализация Terraform (без backend)
-      - name: Terraform Init (local)
+      # init
+      - name: Terraform Init 
         run: terraform init
 
-      # 5. Удаляем старую инфраструктуру
-      - name: Terraform Destroy old infra
+      # delete old berfore deploy
+      - name: Terraform Destroy old
         run: terraform destroy -auto-approve || true
 
-      # 6. Создаём новый backend (S3 + DynamoDB)
+      # new storage for state 
       - name: Terraform Apply bootstrap
         run: terraform apply -auto-approve -target=local_file.backend_config
 
-      # 7. Инициализация Terraform с новым backend
+      # init with state
       - name: Terraform Init with backend
         run: terraform init -backend-config=backend.config -force-copy
 
-      # 8. Разворачиваем инфраструктуру с provisioner
+      # fina build
       - name: Terraform Apply infra
         run: terraform apply -auto-approve
-        env:
-          TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
-          TF_VAR_ec2_private_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
