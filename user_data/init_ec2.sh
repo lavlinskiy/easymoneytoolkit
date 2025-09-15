@@ -35,7 +35,7 @@ docker run -d --name logstash \
 
 # PHP-FPM
 docker run -d --name php-fpm \
-  -v /tmp/app:/var/www/html \
+  -v /tmp/index.php:/var/www/html/index.php \
   --log-driver=gelf \
   --log-opt gelf-address=udp://127.0.0.1:12201 \
   php:8.2-fpm
