@@ -9,45 +9,41 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     env:
-      # keys for all jobs
+      # переменные для Terraform
+      TF_VAR_public_key: ${{ secrets.PUBLIC_KEY }}
       TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
-      TF_VAR_ec2_private_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+      TF_VAR_ec2_private_key: ${{ secrets.EC2_PRIVATE_KEY }}
+      TF_VAR_instance_ami: ${{ secrets.INSTANCE_AMI }}
+      TF_VAR_instance_type: ${{ secrets.INSTANCE_TYPE }}
+      TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
 
     steps:
-      # clone
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # setup 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
 
-      # 3. build credentions
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-north-1
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      # init
-      - name: Terraform Init 
+      - name: Terraform Init
         run: terraform init
 
-      # delete old berfore deploy
       - name: Terraform Destroy old
         run: terraform destroy -auto-approve || true
 
-      # new storage for state 
       - name: Terraform Apply bootstrap
         run: terraform apply -auto-approve -target=local_file.backend_config
 
-      # init with state
       - name: Terraform Init with backend
         run: terraform init -backend-config=backend.config -force-copy
 
-      # fina build
       - name: Terraform Apply infra
         run: terraform apply -auto-approve
