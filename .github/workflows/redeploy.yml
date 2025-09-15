@@ -8,46 +8,51 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    env:
-      # AWS credentials
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
 
-      # Terraform variables (TF_VAR_*)
+    env:
+      # Terraform переменные из секретов
       TF_VAR_public_key: ${{ secrets.PUBLIC_KEY }}
       TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
       TF_VAR_ec2_private_key: ${{ secrets.EC2_PRIVATE_KEY }}
       TF_VAR_instance_ami: ${{ secrets.INSTANCE_AMI }}
       TF_VAR_instance_type: ${{ secrets.INSTANCE_TYPE }}
+      TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
 
     steps:
+      # 1. Клонируем репозиторий
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Устанавливаем Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
 
+      # 3. Настройка AWS credentials
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}   # <- обязательно указывать здесь
 
+      # 4. Инициализация Terraform
       - name: Terraform Init
         run: terraform init
 
+      # 5. Удаляем старую инфраструктуру (если есть)
       - name: Terraform Destroy old
         run: terraform destroy -auto-approve || true
 
+      # 6. Создаём backend конфиг
       - name: Terraform Apply bootstrap
         run: terraform apply -auto-approve -target=local_file.backend_config
 
+      # 7. Инициализация Terraform с backend
       - name: Terraform Init with backend
         run: terraform init -backend-config=backend.config -force-copy
 
+      # 8. Применяем основную инфраструктуру
       - name: Terraform Apply infra
         run: terraform apply -auto-approve
