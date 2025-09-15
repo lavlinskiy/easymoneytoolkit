@@ -33,14 +33,3 @@ variable "ec2_private_key" {
   type        = string
   sensitive   = true
 }
-
-# Новые переменные для Elastic IP и DNS
-variable "route53_zone_id" {
-  description = "ID Route53 Hosted Zone для создания записи DNS"
-  type        = string
-}
-
-variable "app_dns_name" {
-  description = "DNS имя для приложения (например, app.example.com)"
-  type        = string
-}

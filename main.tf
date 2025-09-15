@@ -17,4 +17,3 @@ module "ec2_instance" {
   ec2_ssh_public_key = var.ec2_ssh_public_key
   ec2_private_key    = var.ec2_private_key
 }
-

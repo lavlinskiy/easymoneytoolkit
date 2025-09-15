@@ -20,12 +20,13 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 # --- Запуск контейнеров по очереди с зависимостями ---
 #postfix 
 
+docker network create php-net
+
 docker run -d --name postfix \
   --network php-net \
   -e maildomain="$MAIL_DOMAIN" \
   -e smtp_user=phpuser:phppass \
   catatnight/postfix
-
 
 # Elasticsearch
 docker run -d --name elasticsearch \
@@ -45,12 +46,15 @@ docker run -d --name logstash \
 
 # PHP-FPM
 docker run -d --name php-fpm \
+  --network php-net \
   -v /tmp/index.php:/var/www/html/index.php \
+  -e MAIL_HOST=postfix \
+  -e MAIL_PORT=25 \
+  -e MAIL_USER=phpuser \
+  -e MAIL_PASS=phppass \
   --log-driver=gelf \
   --log-opt gelf-address=udp://logstash:12201 \
   php:8.2-fpm
-
-docker exec -u root php-fpm sh -c "apt-get update && apt-get install -y postfix procps && /etc/init.d/postfix start"
 
 # Nginx
 docker run -d --name nginx \
@@ -80,6 +84,5 @@ docker run -d --name grafana \
   grafana/grafana:latest
 
 # --- Запуск letsencrypt.sh в фоне ---
-#nohup /tmp/letsencrypt.sh > /tmp/letsencrypt.log 2>&1 &
 
-echo "Инициализация завершена! Все контейнеры запущены, Let's Encrypt работает в фоне."
+echo "Инициализация завершена!"
