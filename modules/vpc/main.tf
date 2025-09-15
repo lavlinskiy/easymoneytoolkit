@@ -5,9 +5,7 @@ resource "aws_vpc" "main" {
   enable_dns_support   = true
   enable_dns_hostnames = true
 
-  tags = {
-    Name = "Main VPC"
-  }
+  tags = { Name = "Main VPC" }
 }
 
 resource "aws_subnet" "public" {
@@ -16,17 +14,12 @@ resource "aws_subnet" "public" {
   availability_zone       = data.aws_availability_zones.available.names[0]
   map_public_ip_on_launch = true
 
-  tags = {
-    Name = "Public Subnet"
-  }
+  tags = { Name = "Public Subnet" }
 }
 
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "Main IGW"
-  }
+  tags   = { Name = "Main IGW" }
 }
 
 resource "aws_route_table" "public" {
@@ -37,9 +30,7 @@ resource "aws_route_table" "public" {
     gateway_id = aws_internet_gateway.gw.id
   }
 
-  tags = {
-    Name = "Public Route Table"
-  }
+  tags = { Name = "Public Route Table" }
 }
 
 resource "aws_route_table_association" "public" {

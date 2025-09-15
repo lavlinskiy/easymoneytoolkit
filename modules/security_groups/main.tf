@@ -59,12 +59,9 @@ resource "aws_security_group" "instance_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "ELK-Grafana-SG"
-  }
+  tags = { Name = "ELK-Grafana-SG" }
 }
 
 output "instance_sg_id" {
-  description = "ID Security Group для EC2"
-  value       = aws_security_group.instance_sg.id
+  value = aws_security_group.instance_sg.id
 }
