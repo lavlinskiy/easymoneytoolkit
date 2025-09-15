@@ -4,13 +4,18 @@ resource "aws_key_pair" "deployer" {
   public_key = var.public_key
 }
 
+resource "aws_key_pair" "this" {
+  key_name   = "ec2-key"
+  public_key = var.ec2_ssh_public_key
+}
+
 # EC2 инстанс
 resource "aws_instance" "app_server" {
   ami                         = var.ami
   instance_type               = var.instance_type
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = var.security_group_ids
-  key_name                    = aws_key_pair.deployer.key_name
+  key_name 		      = aws_key_pair.this.key_name
   associate_public_ip_address = true
 
   provisioner "file" {
@@ -19,22 +24,11 @@ resource "aws_instance" "app_server" {
     connection {
       type        = "ssh"
       user        = "ec2-user"
-      private_key = file("~/.ssh/id_rsa")
+      private_key = var.ec2_private_key
       host        = self.public_ip
     }
   }
 
-
-#  provisioner "file" {
-#    source      = "${path.module}/../../app/letsencrypt.sh"
-#    destination = "/tmp/letsencrypt.sh"
-#    connection {
-#      type        = "ssh"
-#      user        = "ec2-user"
-#      private_key = file("~/.ssh/id_rsa")
-#      host        = self.public_ip
-#    }
-# }
 
 
   provisioner "file" {
@@ -43,7 +37,7 @@ resource "aws_instance" "app_server" {
     connection {
       type        = "ssh"
       user        = "ec2-user"
-      private_key = file("~/.ssh/id_rsa")
+      private_key = var.ec2_private_key
       host        = self.public_ip
     }
   }
@@ -54,33 +48,11 @@ resource "aws_instance" "app_server" {
     connection {
       type        = "ssh"
       user        = "ec2-user"
-      private_key = file("~/.ssh/id_rsa")
+      private_key = var.ec2_private_key
       host        = self.public_ip
     }
   }
 
-  provisioner "file" {
-    source      = "${path.module}/../../user_data/init_ec2.sh"
-    destination = "/tmp/init_ec2.sh"
-    connection {
-      type        = "ssh"
-      user        = "ec2-user"
-      private_key = file("~/.ssh/id_rsa")
-      host        = self.public_ip
-    }
- }
-#  provisioner "remote-exec" {
-#    inline = [
-#      "chmod +x /tmp/init_ec2.sh",
-#      "sudo /tmp/init_ec2.sh"
-#    ]
-#    connection {
-#      type        = "ssh"
-#      user        = "ec2-user"
-#      private_key = file("~/.ssh/id_rsa")
-#      host        = self.public_ip
-#    }
-#  }
   user_data = filebase64("${path.module}/../../user_data/init_ec2.sh")
 
   tags = {

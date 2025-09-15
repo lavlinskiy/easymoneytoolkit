@@ -1,0 +1,52 @@
+name: Redeploy AWS Infra from Scratch
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Клонируем репозиторий
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      # 3. Настраиваем AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1  # поменяй на свой регион
+
+      # 4. Локальная инициализация Terraform (без backend)
+      - name: Terraform Init (local)
+        run: terraform init
+
+      # 5. Удаляем старую инфраструктуру
+      - name: Terraform Destroy old infra
+        run: terraform destroy -auto-approve || true
+
+      # 6. Создаём новый backend (S3 + DynamoDB)
+      - name: Terraform Apply bootstrap
+        run: terraform apply -auto-approve -target=local_file.backend_config
+
+      # 7. Инициализация Terraform с новым backend
+      - name: Terraform Init with backend
+        run: terraform init -backend-config=backend.config -force-copy
+
+      # 8. Разворачиваем инфраструктуру с provisioner
+      - name: Terraform Apply infra
+        run: terraform apply -auto-approve
+        env:
+          TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
+          TF_VAR_ec2_private_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
