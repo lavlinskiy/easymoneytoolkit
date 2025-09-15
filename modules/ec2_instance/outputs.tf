@@ -8,6 +8,11 @@ output "instance_eip" {
   value       = aws_eip.app_server_eip.public_ip
 }
 
+output "instance_public_dns" {
+  description = "Public DNS assigned by AWS (временное, до привязки EIP)"
+  value       = aws_instance.app_server.public_dns
+}
+
 output "instance_id" {
   description = "ID of the EC2 instance"
   value       = aws_instance.app_server.id

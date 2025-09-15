@@ -15,7 +15,7 @@ resource "aws_instance" "app_server" {
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = var.security_group_ids
   key_name                    = aws_key_pair.this.key_name
-  associate_public_ip_address = true  # Временно для provisioner
+  associate_public_ip_address = true  # временный публичный IP для provisioner
 
   user_data = file("${path.module}/../../user_data/init_ec2.sh")
 
@@ -56,7 +56,7 @@ resource "aws_instance" "app_server" {
   }
 }
 
-# Elastic IP привязываем после provisioner
+# Elastic IP закрепляется после создания инстанса
 resource "aws_eip" "app_server_eip" {
   instance   = aws_instance.app_server.id
   domain     = "vpc"
