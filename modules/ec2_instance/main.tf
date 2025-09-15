@@ -1,4 +1,4 @@
-# Создаём ключи EC2
+# Создаём ключи для EC2
 resource "aws_key_pair" "deployer" {
   key_name   = "deployer-key"
   public_key = var.public_key
@@ -16,18 +16,16 @@ resource "aws_instance" "app_server" {
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = var.security_group_ids
   key_name                    = aws_key_pair.this.key_name
-  associate_public_ip_address = false # IP через Elastic IP
+  associate_public_ip_address = false
 
-  # User data будет выполнен внутри инстанса при старте
-  user_data = templatefile("${path.module}/../../user_data/init_ec2.sh", {
-    maildomain = self.public_dns
-  })
+  # user_data выполняется при старте инстанса
+  user_data = file("${path.module}/../../user_data/init_ec2.sh")
 
   tags = {
     Name = "PHP-Nginx-ELK-Grafana"
   }
 
-  # Provisioners для копирования файлов через Elastic IP
+  # Provisioners копируют файлы внутрь EC2 через Elastic IP
   provisioner "file" {
     source      = "${path.module}/../../app/index.php"
     destination = "/tmp/index.php"
@@ -62,8 +60,9 @@ resource "aws_instance" "app_server" {
   }
 }
 
-# Закреплённый Elastic IP
+# Elastic IP
 resource "aws_eip" "app_server_eip" {
-  instance = aws_instance.app_server.id
   vpc      = true
+  instance = aws_instance.app_server.id
+  depends_on = [aws_instance.app_server]
 }
