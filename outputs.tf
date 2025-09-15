@@ -1,10 +1,10 @@
 output "instance_public_ip" {
-  description = "Public IP address of the EC2 instance (Elastic IP)"
+  description = "Elastic IP of the EC2 instance"
   value       = module.ec2_instance.instance_public_ip
 }
 
 output "instance_public_dns" {
-  description = "Public DNS name of the EC2 instance"
+  description = "Public DNS assigned by AWS to the EC2 instance"
   value       = module.ec2_instance.instance_public_dns
 }
 
@@ -31,4 +31,9 @@ output "logstash_url" {
 output "elasticsearch_url" {
   description = "URL для Elasticsearch"
   value       = module.ec2_instance.elasticsearch_url
+}
+
+output "vpc_id" {
+  description = "ID созданного VPC"
+  value       = module.vpc.vpc_id
 }

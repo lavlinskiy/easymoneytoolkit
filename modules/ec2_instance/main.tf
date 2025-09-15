@@ -1,3 +1,4 @@
+# SSH ключи
 resource "aws_key_pair" "deployer" {
   key_name   = "deployer-key"
   public_key = var.public_key
@@ -8,6 +9,7 @@ resource "aws_key_pair" "this" {
   public_key = var.ec2_ssh_public_key
 }
 
+# EC2 инстанс
 resource "aws_instance" "app_server" {
   ami                         = var.ami
   instance_type               = var.instance_type
@@ -15,19 +17,14 @@ resource "aws_instance" "app_server" {
   vpc_security_group_ids      = var.security_group_ids
   key_name                    = aws_key_pair.this.key_name
   associate_public_ip_address = false
-  user_data                   = file("${path.module}/../../user_data/init_ec2.sh")
 
-  tags = { Name = "PHP-Nginx-ELK-Grafana" }
-}
+  user_data = file("${path.module}/../../user_data/init_ec2.sh")
 
-resource "aws_eip" "app_server_eip" {
-  instance = aws_instance.app_server.id
-  domain   = "vpc"
-}
+  tags = {
+    Name = "PHP-Nginx-ELK-Grafana"
+  }
 
-resource "null_resource" "provision_files" {
-  depends_on = [aws_eip.app_server_eip]
-
+  # Provisioners для копирования файлов внутрь EC2 через Elastic IP
   provisioner "file" {
     source      = "${path.module}/../../app/index.php"
     destination = "/tmp/index.php"
@@ -60,4 +57,10 @@ resource "null_resource" "provision_files" {
       host        = aws_eip.app_server_eip.public_ip
     }
   }
+}
+
+# Elastic IP
+resource "aws_eip" "app_server_eip" {
+  instance = aws_instance.app_server.id
+  domain   = "vpc"
 }
