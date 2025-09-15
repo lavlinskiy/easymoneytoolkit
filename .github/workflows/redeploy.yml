@@ -8,9 +8,8 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-
     env:
-      # Terraform переменные из секретов
+      # Передача ключей и переменных Terraform через GitHub Secrets
       TF_VAR_public_key: ${{ secrets.PUBLIC_KEY }}
       TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
       TF_VAR_ec2_private_key: ${{ secrets.EC2_PRIVATE_KEY }}
@@ -29,23 +28,23 @@ jobs:
         with:
           terraform_version: 1.9.8
 
-      # 3. Настройка AWS credentials
+      # 3. Настраиваем AWS CLI с ключами и регионом
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}   # <- обязательно указывать здесь
+          aws-region: eu-north-1
 
       # 4. Инициализация Terraform
       - name: Terraform Init
         run: terraform init
 
-      # 5. Удаляем старую инфраструктуру (если есть)
+      # 5. Удаляем старую инфраструктуру
       - name: Terraform Destroy old
         run: terraform destroy -auto-approve || true
 
-      # 6. Создаём backend конфиг
+      # 6. Создание нового S3 backend для состояния Terraform
       - name: Terraform Apply bootstrap
         run: terraform apply -auto-approve -target=local_file.backend_config
 
@@ -53,6 +52,6 @@ jobs:
       - name: Terraform Init with backend
         run: terraform init -backend-config=backend.config -force-copy
 
-      # 8. Применяем основную инфраструктуру
+      # 8. Деплой инфраструктуры
       - name: Terraform Apply infra
         run: terraform apply -auto-approve
