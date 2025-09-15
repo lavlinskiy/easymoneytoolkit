@@ -9,13 +9,10 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     env:
-      # Передача ключей и переменных Terraform через GitHub Secrets
-      TF_VAR_public_key: ${{ secrets.PUBLIC_KEY }}
+      # Передача только чувствительных переменных через GitHub Secrets
       TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
       TF_VAR_ec2_private_key: ${{ secrets.EC2_PRIVATE_KEY }}
-      TF_VAR_instance_ami: ${{ secrets.INSTANCE_AMI }}
-      TF_VAR_instance_type: ${{ secrets.INSTANCE_TYPE }}
-      TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
+      AWS_REGION: eu-north-1
 
     steps:
       # 1. Клонируем репозиторий
@@ -36,22 +33,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-north-1
 
-      # 4. Инициализация Terraform
+      # 4. Инициализация Terraform (локально без backend)
       - name: Terraform Init
         run: terraform init
 
-      # 5. Удаляем старую инфраструктуру
-      - name: Terraform Destroy old
-        run: terraform destroy -auto-approve || true
-
-      # 6. Создание нового S3 backend для состояния Terraform
-      - name: Terraform Apply bootstrap
+      # 5. Создание S3 backend для состояния Terraform
+      - name: Terraform Apply backend
         run: terraform apply -auto-approve -target=local_file.backend_config
 
-      # 7. Инициализация Terraform с backend
+      # 6. Инициализация Terraform с backend
       - name: Terraform Init with backend
         run: terraform init -backend-config=backend.config -force-copy
 
-      # 8. Деплой инфраструктуры
+      # 7. Деплой инфраструктуры
       - name: Terraform Apply infra
         run: terraform apply -auto-approve
