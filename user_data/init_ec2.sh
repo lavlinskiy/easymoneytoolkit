@@ -6,6 +6,8 @@ set -e
 dnf install -y docker
 systemctl enable --now docker
 
+MAIL_DOMAIN="${maildomain}"
+
 # --- Генерация самоподписанных сертификатов на время ---
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /tmp/nginx.key \
@@ -16,6 +18,14 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 #chmod +x /tmp/letsencrypt.sh
 
 # --- Запуск контейнеров по очереди с зависимостями ---
+#postfix 
+
+docker run -d --name postfix \
+  --network php-net \
+  -e maildomain="$MAIL_DOMAIN" \
+  -e smtp_user=phpuser:phppass \
+  catatnight/postfix
+
 
 # Elasticsearch
 docker run -d --name elasticsearch \
@@ -37,7 +47,7 @@ docker run -d --name logstash \
 docker run -d --name php-fpm \
   -v /tmp/index.php:/var/www/html/index.php \
   --log-driver=gelf \
-  --log-opt gelf-address=udp://127.0.0.1:12201 \
+  --log-opt gelf-address=udp://logstash:12201 \
   php:8.2-fpm
 
 docker exec -u root php-fpm sh -c "apt-get update && apt-get install -y postfix procps && /etc/init.d/postfix start"
@@ -52,7 +62,7 @@ docker run -d --name nginx \
   --link php-fpm:php-fpm \
   --link logstash:logstash \
   --log-driver=gelf \
-  --log-opt gelf-address=udp://127.0.0.1:12201 \
+  --log-opt gelf-address=udp://logstash:12201 \
   nginx:alpine
 
 # Kibana
