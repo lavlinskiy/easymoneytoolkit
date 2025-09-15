@@ -14,4 +14,6 @@ module "ec2_instance" {
   subnet_id          = module.vpc.public_subnet_id
   security_group_ids = [module.security_groups.instance_sg_id]
   public_key         = var.public_key
+  ec2_ssh_public_key = var.ec2_ssh_public_key
+  ec2_private_key    = var.ec2_private_key
 }

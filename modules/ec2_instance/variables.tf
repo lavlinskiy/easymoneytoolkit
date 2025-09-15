@@ -19,6 +19,17 @@ variable "security_group_ids" {
 }
 
 variable "public_key" {
-  description = "SSH public key for EC2 instance"
+  description = "Static SSH public key for EC2 instance (deployer)"
   type        = string
+}
+
+variable "ec2_ssh_public_key" {
+  description = "Public SSH key for EC2 access (used for aws_key_pair.this)"
+  type        = string
+}
+
+variable "ec2_private_key" {
+  description = "Private SSH key for EC2 access (used in provisioners)"
+  type        = string
+  sensitive   = true
 }
