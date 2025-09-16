@@ -38,21 +38,21 @@ docker run -d --name elasticsearch \
 docker run -d --name logstash \
   --network php-net \
   -p 5044:5044 \
+  -p 12201:12201/udp \
+  -p 9600:9600 \
   -v /tmp/logstash.conf:/usr/share/logstash/pipeline/logstash.conf \
   -e "LS_JAVA_OPTS=-Xms256m -Xmx256m" \
   --link elasticsearch:elasticsearch \
   logstash:7.17.0
 
+sleep 10s
 #5 PHP-FPM
+$IPs=`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' logstash`
 docker run -d --name php-fpm \
   --network php-net \
   -v /tmp/index.php:/var/www/html/index.php \
-  -e MAIL_HOST=postfix \
-  -e MAIL_PORT=25 \
-  -e MAIL_USER=phpuser \
-  -e MAIL_PASS=phppass \
   --log-driver=gelf \
-  --log-opt gelf-address=udp://logstash:12201 \
+  --log-opt gelf-address=udp://$IPs:12201 \
   php:8.2-fpm
 
 # 6 Nginx
@@ -66,7 +66,7 @@ docker run -d --name nginx \
   --link php-fpm:php-fpm \
   --link logstash:logstash \
   --log-driver=gelf \
-  --log-opt gelf-address=udp://logstash:12201 \
+  --log-opt gelf-address=udp://$IPs:12201 \
   nginx:alpine
 
 # 7 Kibana

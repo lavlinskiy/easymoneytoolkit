@@ -3,7 +3,7 @@ header('Content-Type: text/html; charset=utf-8');
 
 function getCurrencyRates() {
     $cbrUrl = 'https://www.cbr-xml-daily.ru/daily_json.js';
-    
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $cbrUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -17,175 +17,248 @@ function getCurrencyRates() {
     if ($httpCode === 200 && $response !== false) {
         return json_decode($response, true);
     }
-    
+
     return null;
 }
 
-function createCSV($data) {
-    if (!$data || !isset($data['Valute'])) {
-        return false;
-    }
-
-    $csvData = "Валюта,Код,Номинал,Курс,Изменение\n";
-    
-    foreach ($data['Valute'] as $currency) {
-        $csvData .= sprintf(
-            "%s,%s,%d,%.4f,%.4f\n",
-            $currency['Name'],
-            $currency['CharCode'],
-            $currency['Nominal'],
-            $currency['Value'],
-            $currency['Previous'] - $currency['Value']
-        );
-    }
-    
-    return $csvData;
-}
-
-function sendEmail($email, $csvData, $date) {
-    $subject = "Курсы валют ЦБ РФ на " . $date;
-    $message = "Во вложении CSV файл с курсами валют ЦБ РФ на " . $date;
-    
-    $boundary = uniqid();
-    $headers = [
-        "From: currency-bot@yourdomain.com",
-        "Reply-To: currency-bot@yourdomain.com",
-        "MIME-Version: 1.0",
-        "Content-Type: multipart/mixed; boundary=\"$boundary\""
-    ];
-
-    $body = "--$boundary\r\n";
-    $body .= "Content-Type: text/plain; charset=utf-8\r\n";
-    $body .= "Content-Transfer-Encoding: base64\r\n\r\n";
-    $body .= base64_encode($message) . "\r\n";
-    
-    $body .= "--$boundary\r\n";
-    $body .= "Content-Type: text/csv; name=\"currency_rates_$date.csv\"\r\n";
-    $body .= "Content-Transfer-Encoding: base64\r\n";
-    $body .= "Content-Disposition: attachment\r\n\r\n";
-    $body .= base64_encode($csvData) . "\r\n";
-    $body .= "--$boundary--";
-
-    return mail($email, $subject, $body, implode("\r\n", $headers));
-}
-
-$message = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['get_rates'])) {
-        // Просто показываем курсы
-        $currencyData = getCurrencyRates();
-    } elseif (isset($_POST['send_email']) && !empty($_POST['email'])) {
-        $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
-        
-        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $currencyData = getCurrencyRates();
-            
-            if ($currencyData) {
-                $csvData = createCSV($currencyData);
-                
-                if ($csvData && sendEmail($email, $csvData, $currencyData['Date'])) {
-                    $message = "✅ Курсы валют отправлены на email: $email";
-                } else {
-                    $message = "❌ Ошибка при отправке email";
-                }
-            } else {
-                $message = "❌ Не удалось получить курсы валют";
-            }
-        } else {
-            $message = "❌ Неверный формат email адреса";
-        }
-    }
-}
-
-// Получаем данные для отображения
-if (!isset($currencyData)) {
-    $currencyData = getCurrencyRates();
-}
+$currencyData = getCurrencyRates();
 ?>
 
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Курсы валют ЦБ РФ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f7f9fc; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; display: flex; gap: 30px; }
+        .left { flex: 1; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .right { flex: 2; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .form-group { margin: 15px 0; }
-        input[type="email"] { 
-            padding: 8px; 
-            width: 300px; 
-            border: 1px solid #ccc; 
-            border-radius: 4px; 
-        }
-        button { 
-            padding: 10px 20px; 
-            margin: 5px; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-        }
-        .btn-get { background: #4CAF50; color: white; }
-        .btn-send { background: #2196F3; color: white; }
-        .message { padding: 10px; margin: 10px 0; border-radius: 4px; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f5f5f5; }
+        th, td { padding: 8px; border-bottom: 1px solid #ddd; }
+        th { background: #f0f2f5; }
+        button { padding: 10px 15px; border: none; background: #4a90e2; color: white; border-radius: 5px; cursor: pointer; margin-right: 10px; }
+        button:hover { background: #357abd; }
+        canvas { width: 100%; height: 400px; }
+        #saveChart { margin-top: 15px; background: #28a745; }
+        #saveChart:hover { background: #218838; }
+        #saveCSV { margin-top: 15px; background: #ff9800; }
+        #saveCSV:hover { background: #e68900; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Курсы валют ЦБ РФ</h1>
-        
-        <?php if ($message): ?>
-            <div class="message <?php echo strpos($message, '✅') !== false ? 'success' : 'error'; ?>">
-                <?php echo htmlspecialchars($message); ?>
-            </div>
-        <?php endif; ?>
-
-        <form method="post">
-            <div class="form-group">
-                <button type="submit" name="get_rates" class="btn-get">Получить курсы валют</button>
-            </div>
-            
-            <div class="form-group">
-                <input type="email" name="email" placeholder="Введите email для отправки" required>
-                <button type="submit" name="send_email" class="btn-send">Отправить курсы валют на почту</button>
-            </div>
-        </form>
-
+<div class="container">
+    <div class="left">
+        <h2>Курсы валют</h2>
         <?php if ($currencyData && isset($currencyData['Valute'])): ?>
-            <h2>Курсы на <?php echo date('d.m.Y', strtotime($currencyData['Date'])); ?></h2>
             <table>
                 <thead>
-                    <tr>
-                        <th>Валюта</th>
-                        <th>Код</th>
-                        <th>Номинал</th>
-                        <th>Курс</th>
-                        <th>Изменение</th>
-                    </tr>
+                <tr>
+                    <th>Валюта</th>
+                    <th>Код</th>
+                    <th>Курс</th>
+                </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($currencyData['Valute'] as $currency): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($currency['Name']); ?></td>
-                            <td><?php echo htmlspecialchars($currency['CharCode']); ?></td>
-                            <td><?php echo $currency['Nominal']; ?></td>
-                            <td><?php echo number_format($currency['Value'], 4); ?></td>
-                            <td style="color: <?php echo ($currency['Value'] - $currency['Previous']) >= 0 ? 'green' : 'red'; ?>">
-                                <?php echo number_format($currency['Value'] - $currency['Previous'], 4); ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                <?php foreach ($currencyData['Valute'] as $currency): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($currency['Name']); ?></td>
+                        <td><?php echo htmlspecialchars($currency['CharCode']); ?></td>
+                        <td><?php echo number_format($currency['Value'], 4); ?></td>
+                    </tr>
+                <?php endforeach; ?>
                 </tbody>
             </table>
-        <?php elseif (!isset($_POST['send_email'])): ?>
-            <p>Не удалось загрузить курсы валют. Попробуйте обновить страницу.</p>
+
+            <h3>Выбор валюты для графика</h3>
+            <div class="form-group">
+                <?php foreach ($currencyData['Valute'] as $code => $currency): ?>
+                    <label>
+                        <input type="checkbox" class="currencyCheckbox" value="<?php echo $code; ?>">
+                        <?php echo $currency['Name']; ?> (<?php echo $currency['CharCode']; ?>)
+                    </label><br>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="form-group">
+                <label>С даты: <input type="date" id="dateFrom"></label>
+                <label>По дату: <input type="date" id="dateTo"></label>
+            </div>
+
+            <button id="showChart">Показать график</button>
+        <?php else: ?>
+            <p>Не удалось загрузить данные ЦБ.</p>
         <?php endif; ?>
     </div>
+
+    <div class="right">
+        <h2>График изменения курса</h2>
+        <canvas id="chart"></canvas>
+        <div>
+            <button id="saveChart">Сохранить график</button>
+            <button id="saveCSV">Сохранить данные (CSV)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const ctx = document.getElementById('chart').getContext('2d');
+let chart;
+let lastData = {}; // для хранения последних загруженных данных
+
+// 🎨 Палитра цветов
+const colors = [
+    '#4a90e2', '#e94e77', '#50e3c2', '#f5a623',
+    '#9013fe', '#b8e986', '#d0021b', '#7ed321',
+    '#f8e71c', '#417505'
+];
+
+async function loadHistory(currencies, from, to) {
+    const datasets = [];
+    lastData = {}; // обнуляем перед загрузкой
+    let colorIndex = 0;
+
+    for (let code of currencies) {
+        const responses = [];
+
+        let start = new Date(from);
+        let end = new Date(to);
+
+        while (start <= end) {
+            let y = start.getFullYear();
+            let m = String(start.getMonth()+1).padStart(2,'0');
+            let d = String(start.getDate()).padStart(2,'0');
+
+            try {
+                let res = await fetch(`https://www.cbr-xml-daily.ru/archive/${y}/${m}/${d}/daily_json.js`);
+                if (res.ok) {
+                    let data = await res.json();
+                    if (data.Valute && data.Valute[code]) {
+                        responses.push({
+                            date: new Date(data.Date).toISOString().split('T')[0],
+                            value: data.Valute[code].Value
+                        });
+                    }
+                }
+            } catch(e) {
+                console.log("Ошибка загрузки для даты", y,m,d);
+            }
+
+            start.setDate(start.getDate() + 1);
+        }
+
+        lastData[code] = responses;
+
+        datasets.push({
+            label: code,
+            data: responses.map(r => ({x: r.date, y: r.value})),
+            borderColor: colors[colorIndex % colors.length],
+            backgroundColor: colors[colorIndex % colors.length],
+            borderWidth: 2,
+            tension: 0.2,
+            fill: false
+        });
+
+        colorIndex++;
+    }
+
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                x: { type: 'time', time: { unit: 'day' } },
+                y: { beginAtZero: false }
+            }
+        }
+    });
+}
+
+// 📈 Показать график
+document.getElementById("showChart").addEventListener("click", () => {
+    const checkboxes = document.querySelectorAll(".currencyCheckbox:checked");
+    const currencies = Array.from(checkboxes).map(cb => cb.value);
+
+    const from = document.getElementById("dateFrom").value;
+    const to = document.getElementById("dateTo").value;
+
+    if (currencies.length && from && to) {
+        loadHistory(currencies, from, to);
+    } else {
+        alert("Выберите валюты и диапазон дат");
+    }
+});
+
+// 💾 Сохранение графика
+document.getElementById("saveChart").addEventListener("click", () => {
+    if (!chart) {
+        alert("Сначала постройте график!");
+        return;
+    }
+    const link = document.createElement("a");
+    link.href = chart.toBase64Image();
+    link.download = "currency_chart.png";
+    link.click();
+});
+
+// 📊 Сохранение данных в CSV
+document.getElementById("saveCSV").addEventListener("click", () => {
+    if (!Object.keys(lastData).length) {
+        alert("Сначала постройте график!");
+        return;
+    }
+
+    let csv = "Дата," + Object.keys(lastData).join(",") + "\n";
+
+    // Собираем все даты
+    let allDates = new Set();
+    for (let code in lastData) {
+        lastData[code].forEach(r => allDates.add(r.date));
+    }
+    let dates = Array.from(allDates).sort();
+
+    // Заполняем строки
+    for (let date of dates) {
+        let row = [date];
+        for (let code in lastData) {
+            let rec = lastData[code].find(r => r.date === date);
+            row.push(rec ? rec.value : "");
+        }
+        csv += row.join(",") + "\n";
+    }
+
+    // Скачивание
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "currency_data.csv";
+    link.click();
+});
+
+// ⚡ Автозагрузка (USD, EUR, CNY за 30 дней)
+window.addEventListener("DOMContentLoaded", () => {
+    const defaultCurrencies = ["USD", "EUR", "CNY"];
+    document.querySelectorAll(".currencyCheckbox").forEach(cb => {
+        if (defaultCurrencies.includes(cb.value)) cb.checked = true;
+    });
+
+    let today = new Date();
+    let past = new Date();
+    past.setDate(today.getDate() - 30);
+
+    document.getElementById("dateFrom").value = past.toISOString().split('T')[0];
+    document.getElementById("dateTo").value = today.toISOString().split('T')[0];
+
+    loadHistory(defaultCurrencies,
+        document.getElementById("dateFrom").value,
+        document.getElementById("dateTo").value);
+});
+</script>
 </body>
 </html>
