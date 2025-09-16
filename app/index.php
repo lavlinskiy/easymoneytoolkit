@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: text/html; charset=utf-8');
-//берем по API курсы через курл
+// функция. берем по API курсы через курл
 function getCurrencyRates() {
     $cbrUrl = 'https://www.cbr-xml-daily.ru/daily_json.js';
 
@@ -20,10 +20,10 @@ function getCurrencyRates() {
 
     return null;
 }
-
+#вызываем 
 $currencyData = getCurrencyRates();
 ?>
-
+#формируем страницу
 <!DOCTYPE html>
 <html lang="ru">
 <head>

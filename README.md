@@ -1,6 +1,5 @@
 
 # Проект деплоя EasyMoney ToolKit в AWS
-# ПО называется 
 
 ## Описание
 Проект автоматизирует развертывание веб-приложения на базе PHP с Nginx и интеграцией с ELK-стеком (Elasticsearch, Logstash, Kibana) и Grafana. 
@@ -11,7 +10,6 @@
 - Развёртывание Docker-контейнеров:
   - PHP-FPM
   - Nginx
-  - Postfix (SMTP)
   - Logstash
   - Elasticsearch
   - Kibana
@@ -24,17 +22,35 @@
 
 ## Структура проекта
 
-├─ modules/
-│ ├─ vpc/ # Настройка VPC, подсетей и маршрутов
-│ ├─ security_groups/ # Правила безопасности AWS
-│ └─ ec2_instance/ # EC2, Elastic IP, provisioners
-├─ app/ # Исходный код приложения (PHP, конфиги Nginx, Logstash)
-├─ user_data/ # Скрипт инициализации EC2
-├─ .github/workflows/ # GitHub Actions для CI/CD
-├─ main.tf # Основной Terraform файл
-├─ variables.tf # Переменные Terraform
-├─ outputs.tf # Outputs Terraform (Elastic IP, public DNS)
-└─ backend.config # Конфигурация backend для Terraform
+./modules
+./modules/vpc # Настройка VPC, подсетей и маршрутов
+./modules/vpc/main.tf
+./modules/vpc/outputs.tf
+./modules/security_groups # Правила безопасности AWS
+./modules/security_groups/main.tf
+./modules/security_groups/variables.tf
+./modules/ec2_instance # EC2, Elastic IP, provisioners
+./modules/ec2_instance/main.tf
+./modules/ec2_instance/variables.tf
+./modules/ec2_instance/outputs.tf
+./user_data # Скрипт инициализации EC2
+./user_data/init_ec2.sh
+./.github
+./.github/workflows # GitHub Actions для CI/CD
+./.github/workflows/redeploy.yml
+./versions.tf
+./providers.tf
+./variables.tf # Переменные Terraform
+./main.tf# Основной Terraform файл
+./app # Исходный код приложения (PHP, конфиги Nginx, Logstash)
+./app/index.php
+./app/default.conf
+./app/logstash.conf
+./app/letsencrypt.sh
+./outputs.tf # Outputs Terraform (Elastic IP, public DNS)
+./bootstrap.tf
+./README.md
+./backend.config # Конфигурация backend для Terraform
 
 
 ---
@@ -57,10 +73,9 @@
 Workflow `.github/workflows/redeploy.yml` выполняет автоматический деплой:
 
 1. Push в ветку `main` запускает workflow.
-2. Старые ресурсы уничтожаются (`terraform destroy`).
-3. Создаётся backend для Terraform (`terraform apply -target=local_file.backend_config`).
-4. Инициализируется Terraform с backend (`terraform init -backend-config=backend.config`).
-5. Применяется инфраструктура (`terraform apply`).
+2. Создаётся backend для Terraform (`terraform apply -target=local_file.backend_config`).
+3. Инициализируется Terraform с backend (`terraform init -backend-config=backend.config`).
+4. Применяется инфраструктура (`terraform apply`).
 
 **Outputs Terraform** показывают:
 - `instance_public_ip` – публичный IP EC2
