@@ -9,24 +9,24 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     env:
-      # Передача только чувствительных переменных через GitHub Secrets
+      # vars in github sectrets
       TF_VAR_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
       TF_VAR_ec2_ssh_public_key: ${{ secrets.EC2_SSH_PUBLIC_KEY }}
       TF_VAR_ec2_private_key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
       AWS_REGION: eu-north-1
 
     steps:
-      # 1. Клонируем репозиторий
+      # 1. clone
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Устанавливаем Terraform
+      # 2. setup
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.8
 
-      # 3. Настраиваем AWS CLI с ключами и регионом
+      # 3. awscli init
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -34,18 +34,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-north-1
 
-      # 4. Инициализация Terraform (локально без backend)
+      # 4. terraform init
       - name: Terraform Init
         run: terraform init
 
-      # 5. Создание S3 backend для состояния Terraform
+      # 5. s3 for state
       - name: Terraform Apply backend
         run: terraform apply -auto-approve -target=local_file.backend_config
 
-      # 6. Инициализация Terraform с backend
+      # 6. terraform with s3 bucket
       - name: Terraform Init with backend
         run: terraform init -backend-config=backend.config -force-copy
 
-      # 7. Деплой инфраструктуры
+      # 7. all deploy
       - name: Terraform Apply infra
         run: terraform apply -auto-approve
