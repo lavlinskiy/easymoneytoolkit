@@ -8,7 +8,7 @@ variable "public_key" {
   description = "SSH public key for EC2 instance"
   type        = string
 }
-
+#без явного указания ID образа почему-то не работает. 
 variable "instance_ami" {
   description = "AMI ID for EC2 instance"
   type        = string

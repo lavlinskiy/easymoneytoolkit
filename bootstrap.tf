@@ -1,3 +1,5 @@
+#prepare bucket
+
 resource "random_id" "bucket_suffix" {
   byte_length = 4
 }
@@ -17,7 +19,7 @@ resource "aws_s3_bucket_versioning" "terraform_state" {
     status = "Enabled"
   }
 }
-
+#encryption for bucket
 resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" {
   bucket = aws_s3_bucket.terraform_state.id
 
@@ -42,7 +44,7 @@ resource "aws_dynamodb_table" "terraform_locks" {
     Name = "Terraform Lock Table"
   }
 }
-
+#mane config-file
 resource "local_file" "backend_config" {
   filename = "backend.config"
   content  = <<EOT

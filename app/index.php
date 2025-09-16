@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: text/html; charset=utf-8');
-
+//берем по API курсы через курл
 function getCurrencyRates() {
     $cbrUrl = 'https://www.cbr-xml-daily.ru/daily_json.js';
 
@@ -109,7 +109,7 @@ const ctx = document.getElementById('chart').getContext('2d');
 let chart;
 let lastData = {}; // для хранения последних загруженных данных
 
-// 🎨 Палитра цветов
+//  Палитра цветов
 const colors = [
     '#4a90e2', '#e94e77', '#50e3c2', '#f5a623',
     '#9013fe', '#b8e986', '#d0021b', '#7ed321',
@@ -180,7 +180,7 @@ async function loadHistory(currencies, from, to) {
     });
 }
 
-// 📈 Показать график
+//  Показать график
 document.getElementById("showChart").addEventListener("click", () => {
     const checkboxes = document.querySelectorAll(".currencyCheckbox:checked");
     const currencies = Array.from(checkboxes).map(cb => cb.value);
@@ -195,7 +195,7 @@ document.getElementById("showChart").addEventListener("click", () => {
     }
 });
 
-// 💾 Сохранение графика
+//  Сохранение графика
 document.getElementById("saveChart").addEventListener("click", () => {
     if (!chart) {
         alert("Сначала постройте график!");
@@ -207,7 +207,7 @@ document.getElementById("saveChart").addEventListener("click", () => {
     link.click();
 });
 
-// 📊 Сохранение данных в CSV
+// хранение данных в CSV
 document.getElementById("saveCSV").addEventListener("click", () => {
     if (!Object.keys(lastData).length) {
         alert("Сначала постройте график!");
@@ -241,7 +241,7 @@ document.getElementById("saveCSV").addEventListener("click", () => {
     link.click();
 });
 
-// ⚡ Автозагрузка (USD, EUR, CNY за 30 дней)
+//  Автозагрузка (USD, EUR, CNY за 30 дней)
 window.addEventListener("DOMContentLoaded", () => {
     const defaultCurrencies = ["USD", "EUR", "CNY"];
     document.querySelectorAll(".currencyCheckbox").forEach(cb => {

@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.0"
-  
+#без явного указания версии aws-библиотеки не работает через гитхаб  
   required_providers {
     aws = {
       source  = "hashicorp/aws"

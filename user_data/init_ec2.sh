@@ -47,7 +47,7 @@ docker run -d --name logstash \
 
 sleep 10s
 #5 PHP-FPM
-$IPs=`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' logstash`
+IPs=`docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' logstash`
 docker run -d --name php-fpm \
   --network php-net \
   -v /tmp/index.php:/var/www/html/index.php \
