@@ -152,3 +152,4 @@ docker run -d --name nginx --network php-net -p 80:80 -p 443:443 \
 
 Автор: Alexander Lavlinskiy
 Проект: демонстрация деплоя PHP-приложений с ELK/Grafana в AWS.
+
